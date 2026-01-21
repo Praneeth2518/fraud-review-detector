@@ -85,6 +85,30 @@ def detect_signals(text):
 
     return reasons
 
+
+# ----------------------------
+# Automated Abnormal Activity Flags
+# ----------------------------
+def abnormal_activity_flag(label, risk_score, reasons, rating):
+    flags = []
+
+    if label == "fake" and risk_score > 70:
+        flags.append("High-risk fake review detected")
+
+    if len(reasons) >= 2:
+        flags.append("Multiple suspicious linguistic signals")
+
+    if rating >= 4 and label == "fake":
+        flags.append("Rating–content mismatch (high rating, fake text)")
+
+    if rating == 5 and any("Promotional" in r for r in reasons):
+        flags.append("Possible incentivized or paid review")
+
+    return flags
+
+
+
+
 # ----------------------------
 # Predict Button
 # ----------------------------
@@ -99,6 +123,7 @@ if st.button("🔍 Analyze Review", use_container_width=True):
         label = "fake" if pred == 1 else "genuine"
         reasons = detect_signals(review_text)
 
+
         # ----------------------------
         # Results Card (Premium++)
         # ----------------------------
@@ -106,7 +131,16 @@ if st.button("🔍 Analyze Review", use_container_width=True):
 
         # Risk & Trust Scores
         risk_score = int(confidence * 100) if label == "fake" else int((1 - confidence) * 100)
+
+# Boost risk if suspicious signals exist
+        risk_score += min(len(reasons) * 5, 20)
+        risk_score = min(risk_score, 100)
+
         trust_score = 100 - risk_score
+
+# Get automated flags
+        flags = abnormal_activity_flag(label, risk_score, reasons, rating)
+
 
         if label == "fake":
             st.error("🚨 Prediction: **Fake Review**")
@@ -122,7 +156,14 @@ if st.button("🔍 Analyze Review", use_container_width=True):
         st.markdown("### 📊 Risk Meter")
         st.progress(risk_score)
 
-        st.markdown("### 🧠 Suspicious Signals")
+        st.markdown("### 🚩 Automated Flags")
+
+        if flags:
+            for f in flags:
+                st.warning(f"⚠️ {f}")
+        else:
+            st.success("✅ No abnormal review activity detected")
+
         if reasons:
             for r in reasons:
                 st.markdown(f'<span class="pill">⚠️ {r}</span>', unsafe_allow_html=True)
