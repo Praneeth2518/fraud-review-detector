@@ -13,34 +13,52 @@ st.set_page_config(
 )
 
 # ============================
-# Premium CSS (Clean + Minimal)
+# Session state init (IMPORTANT for sample buttons)
+# ============================
+if "review_text" not in st.session_state:
+    st.session_state.review_text = ""
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# ============================
+# Premium Dark UI CSS
 # ============================
 st.markdown("""
 <style>
-/* ---------- Page Background Gradient ---------- */
+/* ---- Hide/clean Streamlit top header space (fix covered top) ---- */
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+div[data-testid="stToolbar"] {
+    visibility: hidden;
+    height: 0%;
+    position: fixed;
+}
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+
+/* ---- Dark Gradient Background ---- */
 .stApp {
-    background: radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 55%),
-                radial-gradient(circle at bottom right, rgba(236,72,153,0.14), transparent 55%),
-                linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(241,245,249,1) 100%);
-    color: #0f172a;
+    background: radial-gradient(circle at top left, rgba(99,102,241,0.24), transparent 52%),
+                radial-gradient(circle at bottom right, rgba(236,72,153,0.18), transparent 55%),
+                linear-gradient(135deg, rgba(15,23,42,1) 0%, rgba(2,6,23,1) 100%);
 }
 
-
-/* ---------- Layout ---------- */
+/* ---- Layout ---- */
 .block-container {
-    padding-top: 0.8rem;
+    padding-top: 0.9rem;  /* reduced top padding */
     padding-bottom: 2.2rem;
     max-width: 860px;
 }
 
-/* ---------- Header ---------- */
+/* ---- Minimal Header ---- */
 .header-wrap {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
-
 .brand-pill {
     display: inline-flex;
     align-items: center;
@@ -51,59 +69,52 @@ st.markdown("""
     border: 1px solid rgba(255,255,255,0.16);
     background: rgba(255,255,255,0.06);
     backdrop-filter: blur(10px);
-    font-weight: 700;
+    font-weight: 800;
     font-size: 0.9rem;
-    letter-spacing: 0.2px;
 }
-
 .main-title {
-    font-size: 1.55rem;
+    font-size: 1.65rem;
     font-weight: 900;
     margin: 0;
     line-height: 1.15;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.4px;
 }
-
 .tagline {
-    margin-top: -2px;
-    color: rgba(15,23,42,0.65);
+    margin-top: -4px;
+    color: rgba(255,255,255,0.72);
     font-size: 1.0rem;
 }
 
-/* ---------- Glass Cards ---------- */
+/* ---- Glass Cards ---- */
 .card {
     padding: 18px 18px;
     border-radius: 18px;
-    background: rgba(255,255,255,0.75);
-    border: 1px solid rgba(15,23,42,0.08);
-    box-shadow: 0px 10px 25px rgba(2,6,23,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.04);
     backdrop-filter: blur(12px);
     margin-top: 16px;
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
-
-/* Hover = subtle zoom */
 .card:hover {
     transform: scale(1.01);
     box-shadow: 0px 10px 30px rgba(0,0,0,0.35);
     border-color: rgba(255,255,255,0.22);
 }
 
-/* ---------- Section Titles ---------- */
+/* ---- Section titles ---- */
 .section-title {
     font-size: 1.03rem;
     font-weight: 850;
     margin-bottom: 0.7rem;
-    letter-spacing: -0.25px;
 }
 
-/* ---------- Muted text ---------- */
+/* ---- Muted ---- */
 .muted {
-    color: rgba(15,23,42,0.65);
+    color: rgba(255,255,255,0.70);
     font-size: 0.95rem;
 }
 
-/* ---------- Pills / Chips ---------- */
+/* ---- Pills ---- */
 .pill {
     display: inline-block;
     padding: 7px 12px;
@@ -115,58 +126,42 @@ st.markdown("""
     margin-top: 8px;
     transition: transform 0.15s ease;
 }
+.pill:hover { transform: scale(1.04); }
 
-.pill:hover {
-    transform: scale(1.04);
-}
-
-header[data-testid="stHeader"] {
-    background: transparent;
-}
-div[data-testid="stToolbar"] {
-    visibility: hidden;
-    height: 0%;
-    position: fixed;
-}
-
-
-/* ---------- Buttons ---------- */
+/* ---- Buttons (default) ---- */
 div.stButton > button {
     border-radius: 14px !important;
     padding: 0.7rem 1rem !important;
     font-weight: 800 !important;
     border: 1px solid rgba(255,255,255,0.12) !important;
-    background: linear-gradient(90deg, rgba(99,102,241,0.95), rgba(236,72,153,0.90)) !important;
+    background: rgba(255,255,255,0.08) !important;
     color: white !important;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
 div.stButton > button:hover {
     transform: scale(1.03);
-    box-shadow: 0px 8px 22px rgba(99,102,241,0.25);
+    box-shadow: 0px 8px 22px rgba(0,0,0,0.25);
 }
 
-/* ---------- Inputs hover ---------- */
+/* ---- Make ONLY the Analyze button look special ---- */
+div[data-testid="stVerticalBlock"] div:has(> div.stButton > button[kind="primary"]) button {
+    background: linear-gradient(90deg, rgba(99,102,241,0.95), rgba(236,72,153,0.90)) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+}
+
+/* ---- Inputs hover ---- */
 textarea, input, select {
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
 textarea:hover, input:hover, select:hover {
     transform: scale(1.01);
-    box-shadow: 0px 10px 20px rgba(0,0,0,0.20);
+    box-shadow: 0px 10px 20px rgba(0,0,0,0.22);
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================
-# Session History (Dashboard)
-# ============================
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-# ============================
-# Helper (Demo Rule-Based Signals) - UI stage
-# (We’ll replace with ML prediction later)
+# Demo signals logic (for UI)
 # ============================
 SUSPICIOUS_KEYWORDS = [
     "buy now", "must buy", "best product", "amazing", "100% recommended",
@@ -179,7 +174,6 @@ def analyze_signals(text: str):
     exclamations = txt.count("!")
     word_count = len(re.findall(r"\w+", txt))
     contains_link = ("http" in txt) or ("www" in txt)
-
     matches = [kw for kw in SUSPICIOUS_KEYWORDS if kw in txt]
     keyword_hits = len(matches)
 
@@ -204,11 +198,11 @@ def analyze_signals(text: str):
     }
 
 # ============================
-# HEADER
+# Header (Minimalistic)
 # ============================
 st.markdown("""
 <div class="header-wrap">
-  <div class="brand-pill">🛒 TrustShield AI</div>
+  <div class="brand-pill">🛡️ TrustShield AI</div>
   <div class="main-title">Fraud Review Detector</div>
   <div class="tagline">
     Detect fake or incentivized e-commerce reviews with authenticity scoring and transparent signals.
@@ -217,7 +211,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================
-# INPUT CARD
+# INPUT CARD (single layout)
 # ============================
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.markdown("<div class='section-title'>📝 Review Input</div>", unsafe_allow_html=True)
@@ -225,14 +219,15 @@ st.markdown("<div class='section-title'>📝 Review Input</div>", unsafe_allow_h
 product_name = st.text_input("Product Name (optional)", placeholder="Wireless Earbuds")
 rating = st.selectbox("Rating Given", [1, 2, 3, 4, 5], index=4)
 
-review_text = st.text_area(
+st.text_area(
     "Review Text",
     height=170,
+    key="review_text",
     placeholder="Example: BEST PRODUCT EVER!!! Must buy now!!! 100% recommended!!!"
 )
 
 st.markdown("<div class='muted'>Quick fill samples:</div>", unsafe_allow_html=True)
-b1, b2, b3 = st.columns([1,1,1])
+b1, b2, b3 = st.columns(3)
 
 if b1.button("🚨 Fake Sample", use_container_width=True):
     st.session_state.review_text = "This product is AMAZING!!! Must buy now!!! Best product ever!!! 100% recommended!!!"
@@ -246,20 +241,23 @@ if b3.button("🧹 Clear", use_container_width=True):
 st.markdown("<br>", unsafe_allow_html=True)
 analyze_btn = st.button("🔍 Analyze Review", type="primary", use_container_width=True)
 
+st.markdown("</div>", unsafe_allow_html=True)
+
 # ============================
 # RESULT CARD
 # ============================
 if analyze_btn:
-    if not review_text.strip():
+    text = st.session_state.review_text.strip()
+
+    if not text:
         st.warning("Please enter a review text.")
     else:
         with st.spinner("Analyzing review..."):
-            time.sleep(0.6)
+            time.sleep(0.55)
 
-        signals = analyze_signals(review_text)
+        signals = analyze_signals(text)
 
-        # Temporary demo classification for UI preview
-        # (Will be replaced by ML integration)
+        # Demo scoring (UI phase)
         suspicious_score = 0
         if rating == 5 and signals["word_count"] <= 8:
             suspicious_score += 2
@@ -279,7 +277,6 @@ if analyze_btn:
 
         risk_score = int(confidence * 100) if label == "fake" else int((1 - confidence) * 100)
         authenticity_score = 100 - risk_score
-
         flagged = risk_score >= 60
 
         st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -303,7 +300,6 @@ if analyze_btn:
         st.markdown(f"<span class='pill'>🧾 Words: {signals['word_count']}</span>", unsafe_allow_html=True)
         st.markdown(f"<span class='pill'>❗ Exclamations: {signals['exclamations']}</span>", unsafe_allow_html=True)
         st.markdown(f"<span class='pill'>🏷️ Keyword Hits: {signals['keyword_hits']}</span>", unsafe_allow_html=True)
-
         st.markdown(
             f"<span class='pill'>🔗 Link: {'Found' if signals['contains_link'] else 'None'}</span>",
             unsafe_allow_html=True
@@ -327,7 +323,6 @@ if analyze_btn:
             explanation.append("Unnatural repetition of words")
         if signals["contains_link"]:
             explanation.append("Contains suspicious link")
-
         if signals["matched_phrases"]:
             explanation.append("Matched phrases: " + ", ".join(signals["matched_phrases"]))
 
@@ -338,10 +333,10 @@ if analyze_btn:
             st.write("No strong suspicious patterns detected.")
 
         st.markdown("<div class='section-title'>🧾 Review Snapshot</div>", unsafe_allow_html=True)
-        st.code(review_text, language="text")
+        st.code(text, language="text")
 
-        # Save to session history (dashboard)
-        snippet = review_text.strip().replace("\n", " ")
+        # Save in session dashboard
+        snippet = text.replace("\n", " ")
         snippet = snippet[:60] + "..." if len(snippet) > 60 else snippet
 
         st.session_state.history.insert(0, {
@@ -356,14 +351,14 @@ if analyze_btn:
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================
-# MINI DASHBOARD (HISTORY)
+# MINI DASHBOARD
 # ============================
 if len(st.session_state.history) > 0:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("<div class='section-title'>📊 Transparency Dashboard</div>", unsafe_allow_html=True)
     st.markdown("<div class='muted'>Recent detections in this session</div>", unsafe_allow_html=True)
 
-    df = pd.DataFrame(st.session_state.history[:7])
+    df = pd.DataFrame(st.session_state.history[:6])
     st.dataframe(df, use_container_width=True, hide_index=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
