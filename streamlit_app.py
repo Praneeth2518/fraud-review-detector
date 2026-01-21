@@ -2,60 +2,82 @@ import re
 import time
 import streamlit as st
 
-# ----------------------------
+# ============================
 # Page Config
-# ----------------------------
+# ============================
 st.set_page_config(
     page_title="Fraud Review Detector",
     page_icon="🛒",
-    layout="centered",
+    layout="wide"
 )
 
-# ----------------------------
-# Premium Styling (CSS)
-# ----------------------------
+# ============================
+# Premium CSS
+# ============================
 st.markdown("""
 <style>
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        max-width: 900px;
+        padding-top: 1.4rem;
+        padding-bottom: 1.6rem;
     }
-    .title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 0.2rem;
+
+    /* Top header area */
+    .topbar {
+        padding: 18px 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.03);
+        margin-bottom: 18px;
     }
-    .subtitle {
-        color: rgba(255,255,255,0.75);
-        margin-bottom: 1.2rem;
+
+    .app-title {
+        font-size: 1.8rem;
+        font-weight: 900;
+        margin: 0;
+        padding: 0;
     }
-    .card {
+
+    .app-subtitle {
+        margin-top: 6px;
+        color: rgba(255,255,255,0.72);
+        font-size: 1rem;
+    }
+
+    .panel {
         padding: 18px;
-        border-radius: 16px;
+        border-radius: 18px;
         border: 1px solid rgba(255,255,255,0.12);
         background: rgba(255,255,255,0.03);
     }
-    .mini {
-        color: rgba(255,255,255,0.75);
-        font-size: 0.95rem;
-    }
+
     .pill {
         display: inline-block;
-        padding: 6px 10px;
+        padding: 7px 12px;
         border-radius: 999px;
-        font-size: 0.85rem;
-        border: 1px solid rgba(255,255,255,0.15);
+        font-size: 0.88rem;
+        border: 1px solid rgba(255,255,255,0.14);
         background: rgba(255,255,255,0.05);
-        margin-right: 8px;
-        margin-top: 6px;
+        margin-right: 10px;
+        margin-top: 8px;
+    }
+
+    .muted {
+        color: rgba(255,255,255,0.70);
+        font-size: 0.95rem;
+    }
+
+    /* Make buttons look cleaner */
+    div.stButton > button {
+        border-radius: 14px !important;
+        padding: 0.65rem 1rem !important;
+        font-weight: 700 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------
-# Helpers (Rule-Based "Demo AI")
-# ----------------------------
+# ============================
+# Demo AI Logic (Rule-based)
+# ============================
 SUSPICIOUS_KEYWORDS = [
     "buy now", "must buy", "best product", "amazing", "100% recommended",
     "limited time", "click here", "free", "guaranteed", "life changing",
@@ -65,192 +87,208 @@ SUSPICIOUS_KEYWORDS = [
 def analyze_review_rule_based(text: str, rating: int):
     txt = text.lower().strip()
 
-    # Basic signals
     exclamations = txt.count("!")
+    word_count = len(re.findall(r"\w+", txt))
+
     caps_ratio = 0.0
     if len(text) > 0:
         caps_ratio = sum(1 for c in text if c.isupper()) / max(1, len(text))
 
-    word_count = len(re.findall(r"\w+", txt))
+    matches = [kw for kw in SUSPICIOUS_KEYWORDS if kw in txt]
 
-    # Keyword matches
-    matches = []
-    for kw in SUSPICIOUS_KEYWORDS:
-        if kw in txt:
-            matches.append(kw)
-
-    # Repetition check (simple)
+    # repetition: fewer unique words -> suspicious
     words = re.findall(r"\w+", txt)
-    repetition_score = 0
+    repetition_flag = False
     if len(words) > 0:
         unique_ratio = len(set(words)) / len(words)
-        if unique_ratio < 0.55:
-            repetition_score = 1
+        repetition_flag = unique_ratio < 0.55
 
-    # Scoring
+    contains_link = ("http" in txt) or ("www" in txt)
+
     score = 0
     reasons = []
 
     if rating == 5 and word_count <= 8:
         score += 2
-        reasons.append("Very short 5-star review (common fake pattern)")
+        reasons.append("Very short 5-star review")
 
     if exclamations >= 3:
         score += 2
-        reasons.append("Excessive exclamation marks")
+        reasons.append("Excessive punctuation")
 
     if caps_ratio > 0.25:
         score += 1
-        reasons.append("Too many capital letters (shouting tone)")
+        reasons.append("Too many capital letters")
 
     if len(matches) >= 2:
         score += 2
         reasons.append("Promotional keywords detected")
 
-    if repetition_score == 1:
+    if repetition_flag:
         score += 1
         reasons.append("Unnatural repetition of words")
 
-    if "http" in txt or "www" in txt:
+    if contains_link:
         score += 2
-        reasons.append("Contains links (often suspicious in reviews)")
+        reasons.append("Contains suspicious link")
 
-    # Decide label
-    if score >= 4:
-        label = "fake"
-    else:
-        label = "genuine"
-
-    # Confidence (fake: higher with score)
+    label = "fake" if score >= 4 else "genuine"
     confidence = min(0.95, 0.55 + (score * 0.10))
 
-    # Add keyword pills
+    # add matched phrases (optional)
     if matches:
         reasons.append("Matched phrases: " + ", ".join(matches[:5]))
 
-    return label, confidence, reasons
+    # risk score: higher for fake, lower for genuine
+    risk_score = int(confidence * 100) if label == "fake" else int((1 - confidence) * 100)
+    trust_score = 100 - risk_score
 
-# ----------------------------
-# Header
-# ----------------------------
-st.markdown('<div class="title">🛒 Fraud Review Detector</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="subtitle">Detect suspicious e-commerce reviews using AI-style signals (fast MVP). '
-    'Connect ML later for final scoring.</div>',
-    unsafe_allow_html=True
-)
+    signals = {
+        "exclamations": exclamations,
+        "word_count": word_count,
+        "caps_ratio": caps_ratio,
+        "keyword_matches": len(matches),
+        "contains_link": contains_link,
+        "repetition_flag": repetition_flag
+    }
 
-# ----------------------------
-# Sidebar (Premium)
-# ----------------------------
-with st.sidebar:
-    st.header("⚙️ Controls")
-    mode = st.radio("Detection Mode", ["Demo AI (Rule-based)", "ML Model (Coming Soon)"], index=0)
-    st.divider()
+    return label, confidence, risk_score, trust_score, reasons, signals
 
-    st.markdown("### ✅ Hackathon Tips")
-    st.markdown(
-        "- Keep demo smooth\n"
-        "- Show 2 examples (fake + genuine)\n"
-        "- Explain features & impact\n"
-    )
+# ============================
+# Header / Topbar
+# ============================
+st.markdown("""
+<div class="topbar">
+  <div class="app-title">🛒 Fraud Review Detector</div>
+  <div class="app-subtitle">
+    Analyze e-commerce reviews and detect suspicious patterns with explainable signals.
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    st.divider()
-    st.markdown("### 📌 Output")
-    st.markdown("Label + Confidence + Reasons")
+# ============================
+# Layout: Input (Left) + Output (Right)
+# ============================
+left, right = st.columns([1.05, 1])
 
-# ----------------------------
-# Main Input Card
-# ----------------------------
-st.markdown('<div class="card">', unsafe_allow_html=True)
+with left:
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.subheader("Review Input")
 
-col1, col2 = st.columns([2.2, 1])
-with col1:
+    product = st.text_input("Product Name (optional)", placeholder="Wireless Earbuds")
+    rating = st.selectbox("Rating", [1, 2, 3, 4, 5], index=4)
+
     review_text = st.text_area(
         "Review Text",
-        height=160,
+        height=180,
         placeholder="Example: BEST PRODUCT EVER!!! Buy now!!! Totally worth it!!!"
     )
 
-with col2:
-    rating = st.selectbox("Rating", [1, 2, 3, 4, 5], index=4)
-    product = st.text_input("Product (optional)", placeholder="Wireless Earbuds")
-    st.caption("Tip: Rating + text improves detection quality.")
+    b1, b2, b3 = st.columns(3)
 
-st.markdown('</div>', unsafe_allow_html=True)
+    if b1.button("🚨 Fake Sample"):
+        review_text = "This product is AMAZING!!! Must buy now!!! Best product ever!!! 100% recommended!!!"
 
-# ----------------------------
-# Sample Buttons
-# ----------------------------
-c1, c2, c3 = st.columns(3)
+    if b2.button("✅ Genuine Sample"):
+        review_text = "The quality is good for the price. Battery lasts around 5-6 hours. Delivery was on time."
 
-if c1.button("🚨 Try Fake Sample"):
-    st.session_state["sample"] = "This product is AMAZING!!! Must buy now!!! Best product ever!!! 100% recommended!!!"
+    if b3.button("🧹 Clear"):
+        review_text = ""
 
-if c2.button("✅ Try Genuine Sample"):
-    st.session_state["sample"] = "The quality is good for the price. Battery lasts around 5-6 hours. Delivery was on time."
+    analyze = st.button("🔍 Analyze", type="primary")
 
-if c3.button("🧹 Clear"):
-    st.session_state["sample"] = ""
+    st.markdown('</div>', unsafe_allow_html=True)
 
-if "sample" in st.session_state and st.session_state["sample"] != "":
-    review_text = st.session_state["sample"]
+with right:
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.subheader("Detection Result")
+    st.markdown('<div class="muted">Submit a review from the left panel to see the analysis.</div>', unsafe_allow_html=True)
 
-# ----------------------------
-# Analyze
-# ----------------------------
-analyze = st.button("🔍 Analyze Review", type="primary")
-
-if analyze:
-    if not review_text.strip():
-        st.warning("Please enter a review text.")
-    else:
-        with st.spinner("Analyzing..."):
-            time.sleep(0.6)
-
-        if mode == "Demo AI (Rule-based)":
-            label, confidence, reasons = analyze_review_rule_based(review_text, rating)
+    if analyze:
+        if not review_text.strip():
+            st.warning("Please enter a review text.")
         else:
-            st.error("ML mode not connected yet. Use Demo AI for now ✅")
-            st.stop()
+            with st.spinner("Analyzing review..."):
+                time.sleep(0.55)
 
-        # ----------------------------
-        # Results Card
-        # ----------------------------
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+            label, confidence, risk, trust, reasons, signals = analyze_review_rule_based(review_text, rating)
 
-        if label == "fake":
-            st.error("🚨 Prediction: **Fake Review**")
-        else:
-            st.success("✅ Prediction: **Genuine Review**")
+            # Result Banner
+            if label == "fake":
+                st.error("🚨 **Fake Review Detected**")
+            else:
+                st.success("✅ **Review Looks Genuine**")
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Confidence", f"{round(confidence*100, 1)}%")
-        m2.metric("Rating", f"{rating} ⭐")
-        m3.metric("Review Length", f"{len(review_text.split())} words")
+            # Metrics Row
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Confidence", f"{round(confidence * 100, 1)}%")
+            c2.metric("Risk Score", f"{risk}/100")
+            c3.metric("Trust Score", f"{trust}/100")
+            c4.metric("Rating", f"{rating} ⭐")
 
-        st.progress(int(confidence * 100))
+            st.markdown("### Risk Meter")
+            st.progress(risk)
 
-        st.markdown("### 🧠 Reasons")
-        if reasons:
-            for r in reasons:
-                st.write("•", r)
-        else:
-            st.write("No strong suspicious signals detected.")
+            # Signals
+            st.markdown("### Signals")
+            st.markdown(f'<span class="pill">🧾 Words: {signals["word_count"]}</span>', unsafe_allow_html=True)
+            st.markdown(f'<span class="pill">❗ Exclamations: {signals["exclamations"]}</span>', unsafe_allow_html=True)
+            st.markdown(f'<span class="pill">🔠 Caps Ratio: {round(signals["caps_ratio"]*100, 1)}%</span>', unsafe_allow_html=True)
+            st.markdown(f'<span class="pill">🏷️ Keyword Hits: {signals["keyword_matches"]}</span>', unsafe_allow_html=True)
 
-        st.markdown("### 🧾 Review Snapshot")
-        st.code(review_text, language="text")
+            if signals["contains_link"]:
+                st.markdown('<span class="pill">🔗 Link Found</span>', unsafe_allow_html=True)
+            else:
+                st.markdown('<span class="pill">🔗 No Link</span>', unsafe_allow_html=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+            if signals["repetition_flag"]:
+                st.markdown('<span class="pill">🔁 Repetition Detected</span>', unsafe_allow_html=True)
+            else:
+                st.markdown('<span class="pill">🔁 Normal Text</span>', unsafe_allow_html=True)
 
-        # ----------------------------
-        # Future Scope
-        # ----------------------------
-        with st.expander("🚀 Future Scope (for judges)"):
-            st.write("✅ Train TF-IDF + Logistic Regression model")
-            st.write("✅ User-based signals: repeated posting patterns")
-            st.write("✅ Product-level trust score dashboard")
-            st.write("✅ Batch CSV upload + analytics")
+            # Reasons
+            st.markdown("### Explanation")
+            if reasons:
+                for r in reasons:
+                    st.write("•", r)
+            else:
+                st.write("No strong suspicious patterns detected.")
 
-# Footer
-st.caption("Built for hackathon MVP ⚡ | Streamlit UI + explainable signals")
+            # Snapshot
+            st.markdown("### Review Snapshot")
+            st.code(review_text, language="text")
+
+            # Download report
+            report = f"""
+Fraud Review Detector Report
+---------------------------
+Product: {product if product else "N/A"}
+Rating: {rating}
+Prediction: {"Fake" if label == "fake" else "Genuine"}
+Confidence: {round(confidence*100, 1)}%
+Risk Score: {risk}/100
+Trust Score: {trust}/100
+
+Review Text:
+{review_text}
+
+Signals:
+- Words: {signals["word_count"]}
+- Exclamations: {signals["exclamations"]}
+- Caps Ratio: {round(signals["caps_ratio"]*100, 1)}%
+- Keyword Hits: {signals["keyword_matches"]}
+- Link Found: {signals["contains_link"]}
+- Repetition Detected: {signals["repetition_flag"]}
+
+Explanation:
+- {"; ".join(reasons) if reasons else "No suspicious patterns"}
+""".strip()
+
+            st.download_button(
+                "📄 Download Report",
+                data=report,
+                file_name="fraud_review_report.txt",
+                mime="text/plain"
+            )
+
+    st.markdown('</div>', unsafe_allow_html=True)
