@@ -1,1 +1,1 @@
-# Fraudulent Review Detection
+# Fraud Review Detector
